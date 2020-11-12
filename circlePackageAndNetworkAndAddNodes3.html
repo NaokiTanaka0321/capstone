@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html>
+ 
+<head>
+  <meta charset="utf-8">
+  <title>ああああああ</title>
+</head>
+ 
+<body>
+
+  <p>
+    <input type="button" name="total" value="全て表示" onclick="cal0()">
+    <input type="button" name="total" value="ご飯のみ表示" onclick="cal1()">
+    <input type="button" name="total" value="デザートのみ表示" onclick="cal2()">
+  </p>
+  <p>
+    今ある食材を追加：
+    <input id="InputIngredient"> 
+    <input type="submit" id="addUserIngredient" value="追加"></button>
+    <input type="submit" id="DeleteIngredient" value="削除"></button>
+    <input type="submit" id="AllDeleteIngredient" value="全消去"></button>
+  </p>
+  <p>
+    どうしても使いたい食材を追加：
+    <input id="NeedInputIngredient"> 
+    <input type="submit" id="NeedaddUserIngredient" value="追加"></button>
+    <input type="submit" id="DeleteNeedIngredient" value="削除"></button>
+    <input type="submit" id="AllDeleteNeedIngredient" value="全消去"></button>
+  </p>
+
+  <script src="d3.js"></script>
+  <script>
+  var width = 1000;
+  var height = 800;
+  var locations = [];
+  var connections = [];
+  var colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+  var svg_network = d3.select("body")
+                      .append("svg")
+                      .attr("width", width)
+                      .attr("height", height);
+
+  // 11.12 Keigo Yonezawa グリーバル変数化
+  var data ; 
+  //var userIngredients = new Set(["ごはん","鶏もも肉","長ねぎ","水","めんつゆ","昆布茶","溶き卵","のり","小ねぎ","","鶏むね肉", "エビ", "玉ねぎ", "トムヤムペースト"]);
+  var userIngredients = new Set(["すもも", "ミント"]);
+  var NeedIngredients = new Set();
+  var recipeArray = [];
+  var displayedRecipeArray = [];  // 既に表示されているレシピ Keigo Yonezawa 11.11
+  var allIngredients = [];
+
+  function cal0(){
+    displayedRecipeArray = [];
+    data = calcNodes(recipeArray, userIngredients, NeedIngredients, 1, 0);
+    locations = calcLocations(data);
+    connections = calcConnections(data);
+    svgNetworkClear();
+    ShowNetwork(0);
+    console.log("__yone_data", data);
+  }
+
+  function cal1(){
+    displayedRecipeArray = [];
+    data = calcNodes(recipeArray, userIngredients, NeedIngredients, 1, 1);
+    locations = calcLocations(data);
+    connections = calcConnections(data);
+    svgNetworkClear();
+    ShowNetwork(1);
+    console.log("__yone_data", data);
+  }
+
+  function cal2(){
+    displayedRecipeArray = [];
+    data = calcNodes(recipeArray, userIngredients, NeedIngredients, 1, 2);
+    locations = calcLocations(data);
+    connections = calcConnections(data);
+    svgNetworkClear();
+    ShowNetwork(2);
+    console.log("__yone_data", data);
+  }
+
+
+d3.csv("./datasetfull1110.csv").then(function(csv){
+
+  var i = 0;
+
+  csv.forEach(function(d){
+    var ingredients = new Set();
+    for(var i=1;i<=25;i++){
+      var ingredient = eval("d.ingredient"+String(i));
+      if(ingredient!="") ingredients.add(ingredient);
+    }
+    recipe = {ingredients: ingredients,　category: d.Category, name: d.name, URL:d.URL, icon: d.icon, minute:d.minute};
+    
+    recipeArray.push(recipe);
+
+  });
+
+  data = calcNodes(recipeArray, userIngredients, NeedIngredients, 1, 0);
+  console.log("__yone_data", data);
+  console.log("__yone_ingredients", allIngredients);
+ 
+  locations = calcLocations(data);
+  connections = calcConnections(data);
+
+  ShowNetwork();
+  console.log("hoge", NeedIngredients.size)
+
+});
+
+function addUserIngredient(){
+  var ingredient = document.getElementById("InputIngredient").value;
+  userIngredients.add(ingredient);
+  console.log("__yone_userIngredients", userIngredients);
+
+  displayedRecipeArray = [];
+  data = calcNodes(recipeArray, userIngredients, NeedIngredients, 1, 0);
+
+  var newLocations = calcLocations(data);
+  var newConnections = calcConnections(data);
+
+  locations=newLocations;
+  connections=newConnections;
+
+  svgNetworkClear();  // svg_network　の初期化
+  ShowNetwork();
+  console.log(userIngredients, NeedIngredients);
+}
+function DeleteIngredient(){
+  var ingredient = document.getElementById("InputIngredient").value;
+  if(userIngredients.has(ingredient)){ userIngredients.delete(ingredient);}
+  displayedRecipeArray = [];
+  data = calcNodes(recipeArray, userIngredients, NeedIngredients, 1, 0);
+
+  var newLocations = calcLocations(data);
+  var newConnections = calcConnections(data);
+
+  locations=newLocations;
+  connections=newConnections;
+
+  svgNetworkClear();  // svg_network　の初期化
+  ShowNetwork();
+  console.log(userIngredients, NeedIngredients);
+}
+
+function AllDeleteIngredient(){
+  userIngredients.clear();
+  NeedIngredients.clear();
+  displayedRecipeArray = [];
+  data = calcNodes(recipeArray, userIngredients, NeedIngredients, 1, 0);
+
+  var newLocations = calcLocations(data);
+  var newConnections = calcConnections(data);
+
+  locations=newLocations;
+  connections=newConnections;
+
+  svgNetworkClear();  // svg_network　の初期化
+  ShowNetwork();
+  console.log(userIngredients, NeedIngredients);
+}
+
+function NeedaddUserIngredient(){
+  var needingredient = document.getElementById("NeedInputIngredient").value;
+  userIngredients.add(needingredient);
+  NeedIngredients.add(needingredient);
+  displayedRecipeArray = [];
+  data = calcNodes(recipeArray, userIngredients, NeedIngredients, 1, 0);
+
+  var newLocations = calcLocations(data);
+  var newConnections = calcConnections(data);
+
+  locations=newLocations;
+  connections=newConnections;
+
+  svgNetworkClear();  // svg_network　の初期化
+  ShowNetwork();
+  console.log(userIngredients, NeedIngredients);
+}
+
+function DeleteNeedIngredient(){
+  var ingredient = document.getElementById("NeedInputIngredient").value;
+  if(NeedIngredients.has(ingredient)){ 
+    NeedIngredients.delete(ingredient);
+    userIngredients.delete(ingredient);
+  }
+  displayedRecipeArray = [];
+  data = calcNodes(recipeArray, userIngredients, NeedIngredients, 1, 0);
+
+  var newLocations = calcLocations(data);
+  var newConnections = calcConnections(data);
+
+  locations=newLocations;
+  connections=newConnections;
+
+  svgNetworkClear();  // svg_network　の初期化
+  ShowNetwork();
+  console.log(userIngredients, NeedIngredients);
+}
+
+function AllDeleteNeedIngredient(){
+  NeedIngredients.clear();
+  displayedRecipeArray = [];
+  data = calcNodes(recipeArray, userIngredients, NeedIngredients, 1, 0);
+
+  var newLocations = calcLocations(data);
+  var newConnections = calcConnections(data);
+
+  locations=newLocations;
+  connections=newConnections;
+
+  svgNetworkClear();  // svg_network　の初期化
+  ShowNetwork();
+  console.log(userIngredients, NeedIngredients);
+}
+
+  function calcLocations(data){
+    var thisLocations = [];
+    console.log("__yone_data", data);
+    for(var i=0; i<data.length; i++){
+      thisLocations.push({name: data[i].name, id: i, r: 30*data[i].children.length});
+    }
+    return thisLocations;
+  }
+
+  function calcConnections(data){
+    var thisConnections = [];
+    for(var i=0; i<data.length; i++){
+      if(data[i].parent>=0) thisConnections.push({source: data[i].name, target: data[data[i].parent].name, distance: 30*data[i].children.length + 30*data[data[i].parent].children.length + 100});
+    }
+    return thisConnections;
+  }
+
+  function setEqual(as, bs) {
+        if (as.size !== bs.size) return false;
+        for (var a of as) if (!bs.has(a)) return false;
+        return true;
+  }
+
+  function setNotInclude(smallset, bigset) {
+    if(smallset.size == 0) return false;
+    for (var i of smallset) if (!bigset.has(i)) return true;
+    return false;
+  }
+
+  function calcNodes(recipeArray, userIngredients, NeedIngredients, maxDiff, mode=0){
+    // maxDiff = 1; // とりあえず追加の材料1つまでとする
+    var recipes = [];
+    var diffArray = [];
+    recipeArray.forEach( (d) =>{
+      if(displayedRecipeArray.indexOf(d) >= 0){ return; }  // 既に表示されてる場合、新たに追加しない Keigo Yonezawa 11.11
+      if(mode==1 && d.category=="デザート"){ return; }      // ご飯のみ
+      if(mode==2 && d.category=="ごはん"){ return; }        // デザートのみ
+
+      if(setNotInclude(NeedIngredients, d.ingredients)) { return; } //どうしても入れたい食材が入っていない場合、レシピを除外
+
+
+      var recipeIngredients = d.ingredients;
+      recipeIngredients.forEach(function(d){
+        if(allIngredients.indexOf(d)<0) allIngredients.push(d);
+      })
+      var diff = differenceSet(recipeIngredients, userIngredients);
+      //console.log("diff", diff);
+      if(diff.size <= maxDiff){
+        if(diffArray.findIndex((set)=>setEqual(set, diff))== -1){
+          diffArray.push(diff);
+          var name = "";
+          diff.forEach((d)=>{
+            name += d;
+            name += ",";
+          })
+          recipes.push({name: name, children: [d], value: 10, diff: diff});
+          displayedRecipeArray.push(d);
+        }else{
+          recipes[diffArray.findIndex((set)=>setEqual(set, diff))].children.push(d);
+          displayedRecipeArray.push(d);
+        }
+        
+      }
+    })
+    recipes = calcParent(recipes, diffArray);
+    console.log("recipes", recipes);
+    console.log("diffArray", diffArray);
+    return recipes;
+  }
+
+  function calcParent(recipes, diffArray){
+    recipes.forEach((d)=>{
+      for(let ingredient of d.diff){
+        var parentSet = differenceSet(d.diff, new Set([ingredient]));
+        var parentID = diffArray.findIndex((set)=>setEqual(set, parentSet));
+        if(parentID != -1){ break; }
+      }
+
+      if (parentID!=-1){
+        if (d.diff.size==0){
+          parentID = -1;
+        }
+        d["parent"] = parentID;
+      }
+    })
+    return recipes;
+  }
+
+
+  function isSuperset(set, subset) {
+      for (let elem of subset) {
+          if (!set.has(elem)) {
+              return false
+          }
+      }
+      return true
+  }
+
+  function differenceSet(setA, setB) {
+      let _difference = new Set(setA)
+      for (let elem of setB) {
+          _difference.delete(elem)
+      }
+      return _difference
+  }
+
+  function ShowNetwork(mode=0){
+
+    var links;
+    var nodes;
+
+    var simulation = d3.forceSimulation()
+            .force("link", d3.forceLink().id(function(d){ return d.name; }))
+            .force("charge", d3.forceManyBody()) 
+            .force("center", d3.forceCenter(width/2, height/2));
+
+
+    links = svg_network.selectAll("line")
+        .data(connections)
+        .enter() 
+        .append("line") 
+        .attr("stroke", "lightgrey") 
+        .attr("stroke-width", 1);
+
+
+    nodes = svg_network.selectAll("circle")
+        .data(locations)
+        .enter()
+        .append("g") 
+        //.attr("class", "node_group") 
+        .attr("class", function(d){ return "node_group "+"node_group"+d.id; })
+        .call(d3.drag()
+            .on("start", dragstarted) 
+            .on("drag", dragged) 
+            .on("end", dragended));
+
+
+    svg_network.selectAll(".node_group")
+        .append("circle")
+        .attr("stroke", "black")
+        .attr("fill", function(d){ return colorScale(d.r); }) 
+        .attr("class", function(d){ return "node_"+d.id; })
+        .attr("r", function(d){ return d.r; });
+
+
+    svg_network.selectAll(".node_group") 
+        .append("text")
+        .attr("font-size", 9) 
+        .attr("stroke", "none") 
+        .attr("fill", "black") 
+        .text(function(d){ return d.name; });
+
+
+    svg_network.on("click", function(d){
+        var ox = d.offsetX;
+        var oy = d.offsetY;
+          //console.log(d);
+        console.log(locations);
+        for(var i=0; i<nodes._groups[0].length; i+=1){
+          //console.log(locations[i].x);
+          //console.log(cx);
+          if((locations[i].x-ox)*(locations[i].x-ox)+(locations[i].y-oy)*(locations[i].y-oy)<25) return;
+        }
+
+        for(var i=0; i<nodes._groups[0].length; i+=1){
+          nodes._groups[0][i].style.opacity=1.0;
+        }
+
+        for(var i=0; i<links._groups[0].length; i+=1){
+          links._groups[0][i].style.stroke="lightgrey";
+          links._groups[0][i].style.zIndex=0;
+        }
+    });
+
+    function ticked() {
+      links
+      .attr("x1", function(d) { return d.source.x; })
+      .attr("y1", function(d) { return d.source.y; })
+      .attr("x2", function(d) { return d.target.x; })
+      .attr("y2", function(d) { return d.target.y; });
+
+      nodes
+      .selectAll("circle")
+      .attr("cx", function(d) { return d.x; })
+      .attr("cy", function(d) { return d.y; });
+
+      nodes
+      .selectAll("text")
+      .attr("x", function(d) { return d.x + 0; })
+      .attr("y", function(d) { return d.y - 50; });
+    }
+
+    simulation.nodes(locations) 
+        .on("tick", ticked);
+
+    simulation.force("link") 
+        .links(connections)
+        .distance(function(d) { return d.distance; });
+
+    function dragstarted(event, d) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
+
+    function dragged(event, d) {
+      d.fx = event.x;
+      d.fy = event.y;
+    }
+
+    function dragended(event, d) {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+
+    function reColoring(event, d){
+      console.log(d);
+      //d.attr("fill", "black");
+    }
+
+    function debugConsole(){
+      console.log(this);
+    }
+
+    document.getElementById("addUserIngredient").onclick = (e) => addUserIngredient();
+    document.getElementById("DeleteIngredient").onclick = (e) => DeleteIngredient();
+    document.getElementById("AllDeleteIngredient").onclick = (e) => AllDeleteIngredient();
+    document.getElementById("NeedaddUserIngredient").onclick = (e) => NeedaddUserIngredient();
+    document.getElementById("DeleteNeedIngredient").onclick = (e) =>  DeleteNeedIngredient();
+    document.getElementById("AllDeleteNeedIngredient").onclick = (e) =>  AllDeleteNeedIngredient();
+
+    AddNodes(mode);
+    CirclePacking();
+
+  }
+
+  // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  クリック時にノードを生やす
+
+  function AddNodes(mode=0){
+
+    var n_data = data.length;
+
+    for(var i=0; i<n_data; i++){
+
+      d3.select(`.node_${i}`).on("click", function(event){
+
+        var id = this.__data__.id;          // ".node_i" の i の部分
+        var name = this.__data__.name;      // "チョコレート," など
+
+        var newUserIngredients = new Set(userIngredients);
+
+        for(var val of data[id].diff){      // クリックされたノードで使える材料
+          newUserIngredients.add(val);
+        }
+
+        var newData = calcNodes(recipeArray, newUserIngredients, NeedIngredients, 1, mode);
+
+        if(newData.length==0){
+          AddNodes(mode);
+        }else{
+          newData.forEach(function(d){
+            d.name += name;             // ノードの名前 : "じゃがいも," -> "青のり,じゃがいも,"
+            d.parent = id;              // parent id を指定（ calcNodes() の実装方法では指定できないため…… ）
+            for(var val of data[id].diff){
+              d.diff.add(val);          // diffに追加 : {じゃがいも} -> {青のり,じゃがいも}
+            }
+          })
+
+          newData.forEach(function(d){ data.push(d); });   // newDataをdataにpush 
+
+          var newLocations = calcLocations(data);
+          var newConnections = calcConnections(data); 
+
+          locations=newLocations;
+          connections=newConnections;
+
+          svgNetworkClear();  // svg_network　の初期化
+          ShowNetwork(mode);
+        }
+      });
+    }
+  }
+
+  function svgNetworkClear(){
+    d3.select("body").select("svg").remove();
+    svg_network = d3.select("body")
+                      .append("svg")
+                      .attr("width", width)
+                      .attr("height", height);
+  }
+
+  // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * circle packing
+
+  function CirclePacking(){
+    var root=[];
+    var pack=[];
+    var node=[];
+
+    for(var i=0; i<data.length; i++){
+      root.push(d3.hierarchy(data[i]));
+      root[i].sum(function(d) { return 2*locations[i].r; });
+      pack.push(d3.pack().size([2*locations[i].r, 2*locations[i].r]).padding(5));
+      pack[i](root[i]);
+      //console.log(root[i]);
+    }
+
+    var color = ["rgba(0,0,0,0)", "Khaki", "Ivory"];
+
+    for(var i=0; i<data.length; i++){
+
+      node.push(d3.select(`.node_group${i}`).selectAll(`.children_nodes${i}`)
+                  .data(root[i].descendants())
+                  .enter()
+                  .append("image")
+                  // .append("circle")
+                  .attr("class", `children_nodes${i}`)
+                  .attr("xlink:href", "test.jpg")
+                  // .attr("cx", 100)
+                  // .attr("cy", 100)
+                  .attr("x", function(d) { return d.x - 15; })
+                  .attr("y", function(d) { return d.y - 15; })
+                  .attr("height", 30)
+                  .attr("width", 30)
+                  // .attr("r", function(d) { return d.r; })
+                  .attr("stroke", "black")
+                  .attr("fill", function(d) { return color[d.depth]; })
+                  );
+
+    }
+
+      function watchValue(id, obj, propName, func) {
+        let value = obj[propName];
+        Object.defineProperty(obj, propName, {
+            get: () => value,
+            set: newValue => {
+                const oldValue = value;
+                value = newValue;
+                func(id, propName, oldValue, newValue);
+            },
+            configurable: true
+        });
+      }
+
+      var ParentX;
+      var ParentY;
+
+      function onChange(id, name, v1, v2) {
+        /*
+        console.log(name);
+        console.log(v1);
+        console.log(' =>', v2);
+        console.log('');
+        */
+    
+        if(name=='x'){
+          ParentX=v2;
+        }
+        if(name=='y'){
+          ParentY=v2;
+        }
+
+        d3.selectAll(`.children_nodes${id}`)
+            .attr("transform", function(d){
+              return "translate(" + (ParentX-locations[id].r) + "," + (ParentY-locations[id].r) + ")"; 
+            });
+
+        //console.log(ParentY);
+
+      };
+
+      for(var i=0; i<data.length; i++){
+        Object.getOwnPropertyNames(locations[i]).forEach(propName => watchValue(i, locations[i], propName, onChange));
+      }
+
+    }
+
+  //}
+
+
+  </script>
+</body>
+ 
+</html>
